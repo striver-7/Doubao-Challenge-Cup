@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            background: linear-gradient(to top, #00c6ff, #0072ff);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        #score, #high-score-snake {
+            font-size: 1.5rem;
+            color: #ffffff;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        #snake-game {
+            margin-top: 30px;
+            width: 400px;
+            height: 400px;
+            background-color: #000;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>贪吃蛇</h1>
+    <div id="score">分数: 0</div>
+    <div id="high-score-snake">历史最高分: 0</div>
+    <canvas id="snake-game" width="400" height="400"></canvas>
+    <script>
+        var canvas = document.getElementById("snake-game");
+        var ctx = canvas.getContext("2d");
+
+        var snake = [{x: 10, y: 10}];  // 初始化蛇的位置
+        var food = {x: 15, y: 15};  // 初始化食物的位置
+        var direction = 'right';  // 初始方向
+        var score = 0;
+        var highestScoreSnake = localStorage.getItem('highestScoreSnake') ? parseInt(localStorage.getItem('highestScoreSnake')) : 0;  // 获取历史最高分
+
+        // 绘制蛇
+        function drawSnake() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);  // 清空画布
+            snake.forEach(function (segment) {
+                ctx.fillStyle = '#00FF00';  // 蛇的颜色
+                ctx.fillRect(segment.x * 20, segment.y * 20, 20, 20);  // 绘制蛇的每个部分
+            });
+        }
+
+        // 绘制食物
+        function drawFood() {
+            ctx.fillStyle = '#FF5733';  // 食物的颜色
+            ctx.fillRect(food.x * 20, food.y * 20, 20, 20);  // 绘制食物
+        }
+
+        // 移动蛇
+        function moveSnake() {
+            var head = {x: snake[0].x, y: snake[0].y};
+            if (direction === 'right') head.x++;
+            else if (direction === 'left') head.x--;
+            else if (direction === 'up') head.y--;
+            else if (direction === 'down') head.y++;
+
+            snake.unshift(head);  // 将新的头部加到蛇的前面
+
+            if (head.x === food.x && head.y === food.y) {
+                score++;  // 分数增加
+                food.x = Math.floor(Math.random() * 20);  // 随机生成食物的x坐标
+                food.y = Math.floor(Math.random() * 20);  // 随机生成食物的y坐标
+            } else {
+                snake.pop();  // 移除蛇的尾部
+            }
+
+            // 判断蛇是否碰到边界或自己
+            if (head.x < 0 || head.y < 0 || head.x >= 20 || head.y >= 20 || collision(head)) {
+                alert('游戏结束! 分数: ' + score);
+                resetGame();  // 游戏结束，重置游戏
+            }
+        }
+
+        // 判断蛇是否碰到自己
+        function collision(head) {
+            return snake.some(function (segment, index) {
+                return index !== 0 && segment.x === head.x && segment.y === head.y;
+            });
+        }
+
+        // 更新游戏
+        function updateGame() {
+            moveSnake();  // 移动蛇
+            drawSnake();  // 绘制蛇
+            drawFood();  // 绘制食物
+            document.getElementById("score").textContent = '分数: ' + score;  // 更新分数
+            updateHighestScore();  // 更新最高分
+        }
+
+        // 监听键盘事件来改变蛇的方向
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowUp' && direction !== 'down') direction = 'up';
+            else if (e.key === 'ArrowDown' && direction !== 'up') direction = 'down';
+            else if (e.key === 'ArrowLeft' && direction !== 'right') direction = 'left';
+            else if (e.key === 'ArrowRight' && direction !== 'left') direction = 'right';
+        });
+
+        // 重置游戏
+        function resetGame() {
+            snake = [{x: 10, y: 10}];  // 初始蛇的位置
+            direction = 'right';  // 初始方向
+            score = 0;  // 初始分数
+            food.x = Math.floor(Math.random() * 20);  // 随机生成食物
+            food.y = Math.floor(Math.random() * 20);
+            document.getElementById("score").textContent = '分数: ' + score;  // 重置分数显示
+        }
+
+        // 更新历史最高分
+        function updateHighestScore() {
+            if (score > highestScoreSnake) {
+                highestScoreSnake = score;
+                localStorage.setItem('highestScoreSnake', highestScoreSnake);  // 存储到localStorage
+            }
+            document.getElementById("high-score-snake").textContent = '历史最高分: ' + highestScoreSnake;
+        }
+
+        // 游戏循环
+        setInterval(updateGame, 100);  // 每100ms更新一次游戏
+    </script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>推箱子</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            text-align: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #fff;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+
+        #countdown {
+            font-size: 24px;
+            color: #ff4d4d;
+            margin: 20px;
+            font-weight: bold;
+        }
+
+        #sokoban {
+            margin: 20px auto;
+            background-color: #e1e4e8;
+            width: 400px;
+            height: 400px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        #restartButton {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 1.2em;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        #restartButton:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        #restartButton:active {
+            background-color: #3c8e3a;
+            transform: scale(1);
+        }
+
+        /* 游戏元素 */
+        .tile {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .obstacle {
+            background-color: #808080;
+        }
+
+        .player {
+            background-color: #0000FF;
+        }
+
+        .box {
+            background-color: #FF0000;
+        }
+
+        .goal {
+            background-color: #00FF00;
+        }
+
+        /* 按钮动画 */
+        #restartButton {
+            transition: all 0.3s ease;
+        }
+
+        /* 游戏区域的动画效果 */
+        #sokoban {
+            animation: fadeIn 1.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>推箱子</h1>
+        <div id="countdown">剩余时间: 01:00</div>
+        <canvas id="sokoban" width="400" height="400"></canvas>
+        <button id="restartButton">重新开始</button>
+    </div>
+
+    <script>
+        var canvas = document.getElementById("sokoban");
+        var ctx = canvas.getContext("2d");
+
+        var player, box, goal, obstacles;
+        var countdownTime = 60; // 初始倒计时 60 秒
+        var countdownInterval;
+
+        // 游戏初始化
+        function initGame() {
+            // 随机生成玩家、箱子、目标和障碍物
+            player = getRandomPosition([]);
+            box = getRandomPosition([player]); // 确保箱子不与玩家重叠
+            goal = getRandomPosition([player, box]); // 确保目标不与玩家或箱子重叠
+            obstacles = [];
+            while (obstacles.length < 3) {
+                let obstacle = getRandomPosition([player, box, goal, ...obstacles]); // 确保障碍物不与玩家、箱子或目标重叠
+                obstacles.push(obstacle);
+            }
+
+            draw();  // 绘制初始界面
+            startCountdown();  // 启动倒计时
+        }
+
+        // 随机生成位置的函数，确保不在边缘
+        function getRandomPosition(exclude) {
+            var x, y;
+            do {
+                x = Math.floor(Math.random() * 8) + 1;  // 生成 1 到 8 之间的随机数
+                y = Math.floor(Math.random() * 8) + 1;  // 生成 1 到 8 之间的随机数
+            } while (exclude.some(e => e.x === x && e.y === y));  // 排除已有的位置
+            return { x: x, y: y };
+        }
+
+        // 绘制游戏元素
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制障碍物
+            ctx.fillStyle = '#808080'; // 灰色表示障碍物
+            for (var i = 0; i < obstacles.length; i++) {
+                ctx.fillRect(obstacles[i].x * 40, obstacles[i].y * 40, 40, 40);
+            }
+
+            // 绘制玩家
+            ctx.fillStyle = '#0000FF';
+            ctx.fillRect(player.x * 40, player.y * 40, 40, 40); 
+
+            // 绘制箱子
+            ctx.fillStyle = '#FF0000';
+            ctx.fillRect(box.x * 40, box.y * 40, 40, 40); 
+
+            // 绘制目标位置
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(goal.x * 40, goal.y * 40, 40, 40); 
+        }
+
+        // 检查目标位置是否有障碍物
+        function isObstacle(x, y) {
+            for (var i = 0; i < obstacles.length; i++) {
+                if (obstacles[i].x === x && obstacles[i].y === y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 游戏结束判断函数
+        function checkVictory() {
+            if (box.x === goal.x && box.y === goal.y) {
+                alert("恭喜你，游戏胜利！");
+                resetGame();
+            }
+        }
+
+        // 重置游戏
+        function resetGame() {
+            clearInterval(countdownInterval);  // 停止倒计时
+            countdownTime = 60;  // 重置倒计时为60秒
+            document.getElementById("countdown").textContent = "剩余时间: " + formatTime(countdownTime);  // 更新倒计时显示
+            initGame(); // 重新初始化游戏
+        }
+
+        // 启动倒计时
+        function startCountdown() {
+            countdownInterval = setInterval(function() {
+                countdownTime--;
+                document.getElementById("countdown").textContent = "剩余时间: " + formatTime(countdownTime);
+                if (countdownTime <= 0) {
+                    clearInterval(countdownInterval);
+                    alert("时间到！游戏结束！");
+                    resetGame();
+                }
+            }, 1000);
+        }
+
+        // 格式化时间
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // 移动玩家和箱子
+        function movePlayer(dx, dy) {
+            var newX = player.x + dx;
+            var newY = player.y + dy;
+
+            // 检查目标位置是否有障碍物
+            if (newX >= 0 && newX < 10 && newY >= 0 && newY < 10 && !isObstacle(newX, newY)) {
+                if (newX === box.x && newY === box.y) {
+                    // 玩家和箱子碰撞，尝试推箱子
+                    var newBoxX = box.x + dx;
+                    var newBoxY = box.y + dy;
+
+                    // 检查箱子目标位置是否有障碍物
+                    if (newBoxX >= 0 && newBoxX < 10 && newBoxY >= 0 && newBoxY < 10 && !isObstacle(newBoxX, newBoxY)) {
+                        box.x = newBoxX;
+                        box.y = newBoxY;
+                        player.x = newX;
+                        player.y = newY;
+                    }
+                } else {
+                    player.x = newX;
+                    player.y = newY;
+                }
+            }
+            draw();
+            checkVictory();  // 检查是否胜利
+        }
+
+        // 监听键盘事件
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowUp') movePlayer(0, -1);
+            else if (e.key === 'ArrowDown') movePlayer(0, 1);
+            else if (e.key === 'ArrowLeft') movePlayer(-1, 0);
+            else if (e.key === 'ArrowRight') movePlayer(1, 0);
+        });
+
+        // 点击重新开始按钮
+        document.getElementById("restartButton").addEventListener("click", function() {
+            resetGame();
+        });
+
+        initGame();  // 初始化游戏
+    </script>
+</body>
+</html>
